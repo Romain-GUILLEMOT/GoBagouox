@@ -1,13 +1,15 @@
 package discord
 
 import (
+	"GoBagouox/discord/buttons/btickets"
 	"GoBagouox/discord/commands"
-	"GoBagouox/discord/commands/music"
+	"GoBagouox/discord/modals/mtickets"
 	"GoBagouox/utils"
 	"github.com/bwmarrin/discordgo"
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 )
 
 type CommandFunc func(s *discordgo.Session, i *discordgo.InteractionCreate)
@@ -16,6 +18,7 @@ type Command struct {
 	Name        string
 	Description string
 	Handler     CommandFunc
+	Options     []*discordgo.ApplicationCommandOption
 }
 
 func getCommands() map[string]Command {
@@ -30,10 +33,23 @@ func getCommands() map[string]Command {
 			Description: "Return Bagou450 server status.",
 			Handler:     commands.GetStatus,
 		},
-		"play": {
-			Name:        "play",
-			Description: "Play a youtube music.",
-			Handler:     music.Play,
+	}
+}
+func getButtons() map[string]Command {
+	return map[string]Command{
+		"ticket_create": {
+			Name:        "ticket_create",
+			Description: "Create a ticket!",
+			Handler:     btickets.Create,
+		},
+	}
+}
+func getModals() map[string]Command {
+	return map[string]Command{
+		"ticket_create": {
+			Name:        "ticket_create",
+			Description: "Create a ticket!",
+			Handler:     mtickets.Create,
 		},
 	}
 }
@@ -50,12 +66,21 @@ func StartBot() {
 	}
 
 	registerSlashCommands(dg, os.Getenv("DISCORD_GUILD"))
+	registerButtons()
+	registerModals()
+
 	dg.AddHandler(func(s *discordgo.Session, i *discordgo.InteractionCreate) {
 		if i.Type == discordgo.InteractionApplicationCommand {
 			commandList := getCommands()
 			command, commandExists := commandList[i.ApplicationCommandData().Name]
 			if commandExists {
+
+				utils.Info("Execution of the command "+utils.Bold(utils.Blue(command.Name)), 1)
+				startTime := time.Now()
 				command.Handler(s, i)
+				executionTime := time.Since(startTime)
+				utils.Info("End of execution of the command "+utils.Bold(utils.Blue(command.Name))+" in "+executionTime.String(), 1)
+
 			} else {
 				embed := &discordgo.MessageEmbed{
 					Title:       "Error",
@@ -73,6 +98,61 @@ func StartBot() {
 				}
 			}
 		}
+		if i.Type == discordgo.InteractionMessageComponent {
+			buttonList := getButtons()
+			button, buttonExists := buttonList[i.MessageComponentData().CustomID]
+			if buttonExists {
+				utils.Info("Execution of the button "+utils.Bold(utils.Blue(button.Name)), 1)
+				startTime := time.Now()
+				button.Handler(s, i)
+				executionTime := time.Since(startTime)
+				utils.Info("End of execution of the button "+utils.Bold(utils.Blue(button.Name))+" in "+executionTime.String(), 1)
+
+			} else {
+				embed := &discordgo.MessageEmbed{
+					Title:       "Error",
+					Description: "This button (" + i.MessageComponentData().CustomID + ") was not found in our database. Please try again.",
+					Color:       0xff0000, // Rouge
+				}
+				err := s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+					Type: discordgo.InteractionResponseChannelMessageWithSource,
+					Data: &discordgo.InteractionResponseData{
+						Embeds: []*discordgo.MessageEmbed{embed},
+					},
+				})
+				if err != nil {
+					utils.Error("Cannot send a message.", err, 1)
+				}
+			}
+		}
+		if i.Type == discordgo.InteractionModalSubmit {
+			modalsList := getModals()
+			modal, modalExists := modalsList[i.ModalSubmitData().CustomID]
+			if modalExists {
+				utils.Info("Execution of the modal "+utils.Bold(utils.Blue(modal.Name)), 1)
+				startTime := time.Now()
+				modal.Handler(s, i)
+				executionTime := time.Since(startTime)
+				utils.Info("End of execution of the modal "+utils.Bold(utils.Blue(modal.Name))+" in "+executionTime.String(), 1)
+
+			} else {
+				embed := &discordgo.MessageEmbed{
+					Title:       "Error",
+					Description: "This modal (" + i.MessageComponentData().CustomID + ") was not found in our database. Please try again.",
+					Color:       0xff0000, // Rouge
+				}
+				err := s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+					Type: discordgo.InteractionResponseChannelMessageWithSource,
+					Data: &discordgo.InteractionResponseData{
+						Embeds: []*discordgo.MessageEmbed{embed},
+					},
+				})
+				if err != nil {
+					utils.Error("Cannot send a message.", err, 1)
+				}
+			}
+		}
+
 	})
 
 	utils.Info("Discord bot is now running.", 1)
@@ -95,6 +175,7 @@ func registerSlashCommands(session *discordgo.Session, guildID string) {
 		discordCommand := &discordgo.ApplicationCommand{
 			Name:        command.Name,
 			Description: command.Description,
+			Options:     command.Options,
 		}
 
 		_, err := session.ApplicationCommandCreate(session.State.User.ID, guildID, discordCommand)
@@ -103,5 +184,21 @@ func registerSlashCommands(session *discordgo.Session, guildID string) {
 		} else {
 			utils.Debug("Loaded slash command: "+utils.Bold(utils.Blue(discordCommand.Name)), 1)
 		}
+	}
+}
+func registerButtons() {
+	buttonsList := getButtons()
+
+	for _, button := range buttonsList {
+		utils.Debug("Loaded button : "+utils.Bold(utils.Blue(button.Name)), 1)
+
+	}
+}
+func registerModals() {
+	modalsList := getModals()
+
+	for _, modal := range modalsList {
+		utils.Debug("Loaded modal : "+utils.Bold(utils.Blue(modal.Name)), 1)
+
 	}
 }
