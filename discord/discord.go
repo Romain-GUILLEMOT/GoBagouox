@@ -3,6 +3,7 @@ package discord
 import (
 	"GoBagouox/discord/buttons/btickets"
 	"GoBagouox/discord/commands"
+	"GoBagouox/discord/message/tickets"
 	"GoBagouox/discord/modals/mtickets"
 	"GoBagouox/utils"
 	"github.com/bwmarrin/discordgo"
@@ -13,12 +14,17 @@ import (
 )
 
 type CommandFunc func(s *discordgo.Session, i *discordgo.InteractionCreate)
+type NewMessageFunc func(s *discordgo.Session, m *discordgo.MessageCreate)
 
 type Command struct {
 	Name        string
 	Description string
 	Handler     CommandFunc
 	Options     []*discordgo.ApplicationCommandOption
+}
+type NewMessage struct {
+	Name    string
+	Handler NewMessageFunc
 }
 
 func getCommands() map[string]Command {
@@ -32,6 +38,11 @@ func getCommands() map[string]Command {
 			Name:        "status",
 			Description: "Return Bagou450 server status.",
 			Handler:     commands.GetStatus,
+		},
+		"removechannel": {
+			Name:        "removechannel",
+			Description: "removechannel",
+			Handler:     commands.RemoveChannel,
 		},
 	}
 }
@@ -53,6 +64,18 @@ func getModals() map[string]Command {
 		},
 	}
 }
+func getNewMessage() map[string]NewMessage {
+	return map[string]NewMessage{
+		"ticketsMessage": {
+			Name:    "ticketsMessage",
+			Handler: tickets.NewTicketMessage,
+		},
+		"ticketsAttachments": {
+			Name:    "ticketsAttachments",
+			Handler: tickets.NewTicketAttachment,
+		},
+	}
+}
 func StartBot() {
 
 	dg, err := discordgo.New("Bot " + os.Getenv("DISCORD_TOKEN"))
@@ -68,8 +91,19 @@ func StartBot() {
 	registerSlashCommands(dg, os.Getenv("DISCORD_GUILD"))
 	registerButtons()
 	registerModals()
+	dg.AddHandler(func(s *discordgo.Session, m *discordgo.MessageCreate) {
+		if m.Author.ID == s.State.User.ID {
+			return
+		}
+		utils.Debug("New message. Run all functions.", 1)
 
+		for _, newmesshandler := range getNewMessage() {
+			utils.Debug("Run: "+newmesshandler.Name, 1)
+			newmesshandler.Handler(s, m)
+		}
+	})
 	dg.AddHandler(func(s *discordgo.Session, i *discordgo.InteractionCreate) {
+
 		if i.Type == discordgo.InteractionApplicationCommand {
 			commandList := getCommands()
 			command, commandExists := commandList[i.ApplicationCommandData().Name]
@@ -152,7 +186,6 @@ func StartBot() {
 				}
 			}
 		}
-
 	})
 
 	utils.Info("Discord bot is now running.", 1)

@@ -44,6 +44,10 @@ func joinMiddlewares(middlewares []gin.HandlerFunc) string {
 	return " [MIDDLEWARES: " + strings.Join(names, ", ") + "]"
 }
 func StartServer() {
+	err := os.MkdirAll(os.Getenv("WEBSERVER_UPLOADED_FILES"), 0755)
+	if err != nil {
+		utils.Fatal("Can't create upload folder", err, 0)
+	}
 	gin.SetMode(gin.ReleaseMode)
 	router := gin.New()
 	routes := getRoutes()
@@ -77,6 +81,7 @@ func StartServer() {
 			utils.Fatal("ERR-001: Can't start the webserver on port "+webport, err, 0)
 		}
 	}()
+
 	utils.Info("Web server is now running on port "+webport+".", 0)
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
