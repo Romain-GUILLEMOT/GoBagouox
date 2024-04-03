@@ -4,23 +4,25 @@ import "gorm.io/gorm"
 
 type Ticket struct {
 	gorm.Model
-	Nom       string `gorm:"type:varchar(100);not null;"`
-	Status    string `gorm:"type:varchar(20);not null;"`
-	License   string `gorm:"type:varchar(100);not null;default:''"`
-	Logs      string `gorm:"type:varchar(50);not null;default:''"`
-	ChannelId string `gorm:"type:varchar(100);not null;"`
-	OwnerID   uint   `gorm:"not null"`
-	Owner     User   `gorm:"foreignKey:OwnerID"`
+	Name           string          `gorm:"type:varchar(100);not null;"`
+	Status         string          `gorm:"type:varchar(20);not null;"`
+	License        string          `gorm:"type:varchar(100);not null;default:''"`
+	Logs           string          `gorm:"type:varchar(50);not null;default:''"`
+	ChannelId      string          `gorm:"type:varchar(100);not null;"`
+	OwnerID        uint            `gorm:"not null"`
+	Owner          User            `gorm:"foreignKey:OwnerID"`
+	TicketMessages []TicketMessage `gorm:"foreignKey:TicketID"`
 }
 
 type TicketMessage struct {
 	gorm.Model
-	Content   string `gorm:"type:text;not null"`
-	MessageID string `gorm:"type:string;not null;"`
-	TicketID  uint   `gorm:"not null"`
-	Ticket    Ticket `gorm:"foreignKey:TicketID"`
-	OwnerID   uint   `gorm:"not null"`
-	Owner     User   `gorm:"foreignKey:OwnerID"`
+	Content           string              `gorm:"type:text;not null"`
+	MessageID         string              `gorm:"type:string;not null;"`
+	TicketID          uint                `gorm:"not null"`
+	Ticket            Ticket              `gorm:"foreignKey:TicketID"`
+	OwnerID           uint                `gorm:"not null"`
+	Owner             User                `gorm:"foreignKey:OwnerID"`
+	TicketAttachments []TicketAttachments `gorm:"foreignKey:TicketMessageID"`
 }
 
 type TicketAttachments struct {

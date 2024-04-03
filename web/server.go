@@ -2,6 +2,8 @@ package web
 
 import (
 	"GoBagouox/utils"
+	"GoBagouox/web/middleware"
+	"GoBagouox/web/ticket"
 	"context"
 	"errors"
 	"github.com/gin-gonic/gin"
@@ -29,6 +31,12 @@ func getRoutes() []Route {
 			Handler:    Hello,
 			Middleware: nil,
 		},
+		{
+			Method:     "GET",
+			Path:       "/ticket/:id",
+			Handler:    ticket.Gettranscript,
+			Middleware: []gin.HandlerFunc{middleware.AuthRequired()},
+		},
 	}
 }
 func joinMiddlewares(middlewares []gin.HandlerFunc) string {
@@ -37,8 +45,8 @@ func joinMiddlewares(middlewares []gin.HandlerFunc) string {
 	}
 
 	names := make([]string, len(middlewares))
-	for i, middleware := range middlewares {
-		names[i] = runtime.FuncForPC(reflect.ValueOf(middleware).Pointer()).Name()
+	for i, middlewareNames := range middlewares {
+		names[i] = runtime.FuncForPC(reflect.ValueOf(middlewareNames).Pointer()).Name()
 	}
 
 	return " [MIDDLEWARES: " + strings.Join(names, ", ") + "]"

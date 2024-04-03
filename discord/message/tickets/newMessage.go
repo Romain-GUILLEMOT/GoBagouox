@@ -32,7 +32,7 @@ func NewTicketMessage(s *discordgo.Session, m *discordgo.MessageCreate) {
 	ticketMessage := models.TicketMessage{
 		Content:   m.Content,
 		TicketID:  ticket.ID,
-		MessageID: m.ID,
+		MessageID: m.Message.ID,
 		OwnerID:   user.ID,
 	}
 
@@ -61,14 +61,14 @@ func NewTicketMessage(s *discordgo.Session, m *discordgo.MessageCreate) {
 	if isAdmin && ticket.Status == "client_answer" {
 		ticket.Status = "support_answer"
 		db.Save(&ticket)
-		go utils.SendEmail(user.Email, "Bagou450 - New Message in Your Discord Ticket", "newTicketMessage", data)
+		go utils.SendEmail(user.Email, os.Getenv("APP_NAME")+" - New Message in Your Discord Ticket", "newTicketMessage", data)
 	}
 
 	if !isAdmin && ticket.Status == "support_answer" {
 		ticket.Status = "client_answer"
 		db.Save(&ticket)
 
-		go utils.SendEmail(os.Getenv("OWNER_EMAIL"), "Bagou450 - New Message in a Discord Ticket", "newTicketMessage", data)
+		go utils.SendEmail(os.Getenv("OWNER_EMAIL"), os.Getenv("APP_NAME")+" - New Message in a Discord Ticket", "newTicketMessage", data)
 
 	}
 

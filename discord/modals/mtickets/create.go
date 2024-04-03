@@ -86,6 +86,8 @@ func Create(s *discordgo.Session, i *discordgo.InteractionCreate) {
 			user = models.User{
 				Model:     gorm.Model{},
 				DiscordID: i.Member.User.ID,
+				Username:  i.Member.User.Username,
+				Avatar:    i.Member.User.AvatarURL("512"),
 				Email:     firstComponent.Value,
 			}
 			db.Create(&user)
@@ -131,14 +133,30 @@ func Create(s *discordgo.Session, i *discordgo.InteractionCreate) {
 	}
 	ticket = models.Ticket{
 		Model:     gorm.Model{},
-		Nom:       subject,
+		Name:      subject,
 		Status:    "client_answer",
 		License:   license,
 		Logs:      logs,
 		ChannelId: channel.ID,
 		Owner:     user,
 	}
-	db.Create(&ticket)
+	result = db.Create(&ticket)
+	if result.Error != nil {
+		utils.Error("Cannot create ticket.", result.Error, 1)
+		discordUtils.DiscordError(s, i)
+		return
+	}
+	deleteComponent := []discordgo.MessageComponent{
+		&discordgo.ActionsRow{
+			Components: []discordgo.MessageComponent{
+				&discordgo.Button{
+					Label:    "Close ticket",
+					CustomID: "ticket_close",
+					Style:    discordgo.DangerButton,
+				},
+			},
+		},
+	}
 	embed := &discordgo.MessageEmbed{
 		Title:       subject,
 		Description: "This ticket was made by <@" + user.DiscordID + "> (" + user.Email + ")\n With these informations:",
@@ -164,18 +182,21 @@ func Create(s *discordgo.Session, i *discordgo.InteractionCreate) {
 	}
 	db.Create(&ticketMessage)
 
-	_, err = s.ChannelMessageSendEmbed(channel.ID, embed)
+	_, err = s.ChannelMessageSendComplex(channel.ID, &discordgo.MessageSend{
+		Embed:      embed,
+		Components: deleteComponent,
+	})
 	embed = &discordgo.MessageEmbed{
 		Title:       "Success",
 		Description: "Your ticket #ticket-" + strconv.Itoa(int(ticket.ID)) + " has been created",
-		Color:       0x00ff00, // Vert
+		Color:       0x00ff00,
 	}
 	if err != nil {
 		utils.Error("Cannot send a message to the ticket channel.", err, 1)
 		embed = &discordgo.MessageEmbed{
 			Title:       "Warning",
 			Description: "The ticket was created but we can't send any message on it. \nPlease write your message in the ticket again.",
-			Color:       0xFFFF00, // Jaune
+			Color:       0xFFFF00,
 		}
 	}
 	_, err = s.ChannelMessageSend(channel.ID, "Provided message: \n"+message)
@@ -184,9 +205,10 @@ func Create(s *discordgo.Session, i *discordgo.InteractionCreate) {
 		embed = &discordgo.MessageEmbed{
 			Title:       "Warning",
 			Description: "The ticket was created but we can't send any message on it. \nPlease write your message in the ticket again.",
-			Color:       0xFFFF00, // Jaune
+			Color:       0xFFFF00,
 		}
 	}
+
 	err = s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 		Type: discordgo.InteractionResponseChannelMessageWithSource,
 		Data: &discordgo.InteractionResponseData{

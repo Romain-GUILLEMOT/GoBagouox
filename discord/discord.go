@@ -53,6 +53,11 @@ func getButtons() map[string]Command {
 			Description: "Create a ticket!",
 			Handler:     btickets.Create,
 		},
+		"ticket_close": {
+			Name:        "ticket_close",
+			Description: "Close a ticket!",
+			Handler:     btickets.Delete,
+		},
 	}
 }
 func getModals() map[string]Command {
