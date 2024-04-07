@@ -5,13 +5,20 @@ import (
 	"GoBagouox/database/models"
 	"GoBagouox/utils"
 	"GoBagouox/utils/security"
+	"encoding/base64"
 	"encoding/json"
 	"github.com/gin-gonic/gin"
 	"net/http"
+	"os"
 )
 
 func Gettranscript(c *gin.Context) {
 	ticketID := c.Param("id")
+	email := c.Query("email")
+	if email == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"status": "error", "message": "Some data are missing."})
+		return
+	}
 	db := database.GetDB()
 	var ticket models.Ticket
 	err := db.Preload("TicketMessages").Preload("TicketMessages.Owner").Preload("TicketMessages.TicketAttachments").First(&ticket, ticketID).Error
@@ -20,7 +27,10 @@ func Gettranscript(c *gin.Context) {
 		utils.Error("Failed to get ticket transcript.", err, 0)
 		return
 	}
-	//Retouner un json avec les messages et attachement (Tout en incluant l'id discord)
+	if ticket.Owner.Email != email {
+		c.JSON(http.StatusUnauthorized, gin.H{"status": "error", "message": "Unauthorized access."})
+		return
+	}
 	messages := make([]gin.H, len(ticket.TicketMessages))
 	for i, message := range ticket.TicketMessages {
 		attachments := make([]gin.H, len(message.TicketAttachments))
@@ -66,13 +76,15 @@ func Gettranscript(c *gin.Context) {
 		utils.Error("Error during PBKDF2 creation.", err, 0)
 		return
 	}
-	encryptedText, err := security.EncryptAES(string(jsonData), encryptedKey)
+	encryptedText, err := security.EncryptXChaCha(string(jsonData), encryptedKey)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"status": "error", "message": "Unknown error occurred."})
-		utils.Error("Error during AES encoding.", err, 0)
+		utils.Error("Error during XCha encoding.", err, 0)
 		return
 	}
+	saltBase64 := base64.StdEncoding.EncodeToString(salt)
+	encryptedKeyBase64 := base64.StdEncoding.EncodeToString(encryptedKey)
 
-	c.JSON(http.StatusOK, gin.H{"status": "success", "salt": salt, "data": encryptedText})
+	c.JSON(http.StatusOK, gin.H{"status": "success", "salt": saltBase64, "data": encryptedText, "pbkdf2key": encryptedKeyBase64, "saltUncoded": salt, "sharedkey": os.Getenv("WEBSERVER_SHARED_KEY"), "iteration": os.Getenv("PBKDF2_ITERATIONS")})
 
 }

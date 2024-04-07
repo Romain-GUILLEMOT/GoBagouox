@@ -15,6 +15,6 @@ func PBKDF2Encode(salt []byte) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	hashedKey := pbkdf2.Key([]byte(key), salt, iterationInt, 16, sha256.New)
+	hashedKey := pbkdf2.Key([]byte(key), salt, iterationInt, 32, sha256.New)
 	return hashedKey, nil
 }

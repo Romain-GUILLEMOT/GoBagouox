@@ -102,12 +102,7 @@ func main() {
 	log.Logger = log.Output(writer)
 
 	//Test ENV
-	iteration := os.Getenv("PBKDF2_ITERATIONS")
 	salt := os.Getenv("SALT_SIZE")
-	_, err = strconv.Atoi(iteration)
-	if err != nil {
-		utils.Fatal("Error during PBKDF2_ITERATIONS to int conversion.", err, 0)
-	}
 	_, err = strconv.Atoi(salt)
 	if err != nil {
 		utils.Fatal("Error during SALT_SIZE to int conversion.", err, 0)
