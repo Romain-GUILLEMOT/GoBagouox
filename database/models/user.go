@@ -8,4 +8,5 @@ type User struct {
 	Username  string `gorm:"type:string;"`
 	Avatar    string `gorm:"type:string;"`
 	Email     string `gorm:"type:string;"`
+	Admin     bool   `gorm:"type:bool;default:false"`
 }

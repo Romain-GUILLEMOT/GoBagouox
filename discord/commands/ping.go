@@ -17,12 +17,12 @@ func Ping(s *discordgo.Session, i *discordgo.InteractionCreate) {
 	}
 
 	message := &discordgo.MessageSend{
-		Content: "Cliquez sur le bouton ci-dessous pour créer un btickets",
+		Content: "Cliquez sur le bouton ci-dessous pour créer un tickets",
 		Components: []discordgo.MessageComponent{
 			&discordgo.ActionsRow{
 				Components: []discordgo.MessageComponent{
 					&discordgo.Button{
-						Label:    "Créer un btickets",
+						Label:    "Créer un tickets",
 						CustomID: "ticket_create",
 						Style:    discordgo.PrimaryButton,
 					},

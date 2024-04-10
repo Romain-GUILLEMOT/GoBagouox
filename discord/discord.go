@@ -1,10 +1,10 @@
 package discord
 
 import (
-	"GoBagouox/discord/buttons/btickets"
+	btickets "GoBagouox/discord/buttons/tickets"
 	"GoBagouox/discord/commands"
 	"GoBagouox/discord/message/tickets"
-	"GoBagouox/discord/modals/mtickets"
+	mtickets "GoBagouox/discord/modals/tickets"
 	"GoBagouox/utils"
 	"github.com/bwmarrin/discordgo"
 	"os"
@@ -12,6 +12,8 @@ import (
 	"syscall"
 	"time"
 )
+
+var dg *discordgo.Session
 
 type CommandFunc func(s *discordgo.Session, i *discordgo.InteractionCreate)
 type NewMessageFunc func(s *discordgo.Session, m *discordgo.MessageCreate)
@@ -81,9 +83,11 @@ func getNewMessage() map[string]NewMessage {
 		},
 	}
 }
-func StartBot() {
 
-	dg, err := discordgo.New("Bot " + os.Getenv("DISCORD_TOKEN"))
+func StartBot() {
+	var err error
+
+	dg, err = discordgo.New("Bot " + os.Getenv("DISCORD_TOKEN"))
 	if err != nil {
 		utils.Fatal("ERR-001: Failed to create Discord session", err, 1)
 	}
@@ -239,4 +243,7 @@ func registerModals() {
 		utils.Debug("Loaded modal : "+utils.Bold(utils.Blue(modal.Name)), 1)
 
 	}
+}
+func GetSession() *discordgo.Session {
+	return dg
 }

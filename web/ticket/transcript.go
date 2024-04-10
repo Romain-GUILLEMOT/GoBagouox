@@ -9,27 +9,40 @@ import (
 	"encoding/json"
 	"github.com/gin-gonic/gin"
 	"net/http"
-	"os"
 )
 
 func Gettranscript(c *gin.Context) {
+	utils.Debug("Execution of /ticket/:id with GET", 0)
+
 	ticketID := c.Param("id")
 	email := c.Query("email")
 	if email == "" {
+		utils.Debug("Bad request email missing on Gettranscript", 0)
 		c.JSON(http.StatusBadRequest, gin.H{"status": "error", "message": "Some data are missing."})
 		return
 	}
 	db := database.GetDB()
 	var ticket models.Ticket
-	err := db.Preload("TicketMessages").Preload("TicketMessages.Owner").Preload("TicketMessages.TicketAttachments").First(&ticket, ticketID).Error
+	err := db.Preload("TicketMessages").Preload("Owner").Preload("TicketMessages.Owner").Preload("TicketMessages.TicketAttachments").First(&ticket, ticketID).Error
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"status": "error", "message": "Failed to get ticket transcript."})
 		utils.Error("Failed to get ticket transcript.", err, 0)
+		c.JSON(http.StatusInternalServerError, gin.H{"status": "error", "message": "Failed to get ticket transcript."})
 		return
 	}
+
 	if ticket.Owner.Email != email {
-		c.JSON(http.StatusUnauthorized, gin.H{"status": "error", "message": "Unauthorized access."})
-		return
+		var user models.User
+		err := db.Where("email = ?", email).First(&user, user).Error
+		if err != nil {
+			utils.Error("Failed to get user.", err, 0)
+			c.JSON(http.StatusInternalServerError, gin.H{"status": "error", "message": "Failed to get user."})
+			return
+		}
+		if !user.Admin {
+			c.JSON(http.StatusUnauthorized, gin.H{"status": "error", "message": "Unauthorized access."})
+			return
+		}
+
 	}
 	messages := make([]gin.H, len(ticket.TicketMessages))
 	for i, message := range ticket.TicketMessages {
@@ -47,44 +60,48 @@ func Gettranscript(c *gin.Context) {
 			"id":           message.ID,
 			"owner":        message.Owner.Username,
 			"owner_avatar": message.Owner.Avatar,
+			"created_at":   message.CreatedAt,
+			"updated_at":   message.UpdatedAt,
+			"admin":        message.Owner.Admin,
 			"attachments":  attachments,
 		}
 	}
 	data := gin.H{
-		"id":       ticket.ID,
-		"name":     ticket.Name,
-		"status":   ticket.Status,
-		"license":  ticket.License,
-		"logs":     ticket.Logs,
-		"messages": messages,
+		"id":         ticket.ID,
+		"name":       ticket.Name,
+		"status":     ticket.Status,
+		"created_at": ticket.CreatedAt,
+		"updated_at": ticket.UpdatedAt,
+		"license":    ticket.License,
+		"logs":       ticket.Logs,
+		"messages":   messages,
 	}
 	jsonData, err := json.Marshal(data)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"status": "error", "message": "Unknown error occurred."})
 		utils.Error("Error during JSON conversion.", err, 0)
+		c.JSON(http.StatusInternalServerError, gin.H{"status": "error", "message": "Unknown error occurred."})
 		return
 	}
 	salt, err := security.CreateSalt()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"status": "error", "message": "Unknown error occurred."})
 		utils.Error("Error during salt creation.", err, 0)
+		c.JSON(http.StatusInternalServerError, gin.H{"status": "error", "message": "Unknown error occurred."})
 		return
 	}
 	encryptedKey, err := security.PBKDF2Encode(salt)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"status": "error", "message": "Unknown error occurred."})
 		utils.Error("Error during PBKDF2 creation.", err, 0)
+		c.JSON(http.StatusInternalServerError, gin.H{"status": "error", "message": "Unknown error occurred."})
 		return
 	}
 	encryptedText, err := security.EncryptXChaCha(string(jsonData), encryptedKey)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"status": "error", "message": "Unknown error occurred."})
 		utils.Error("Error during XCha encoding.", err, 0)
+		c.JSON(http.StatusInternalServerError, gin.H{"status": "error", "message": "Unknown error occurred."})
 		return
 	}
 	saltBase64 := base64.StdEncoding.EncodeToString(salt)
-	encryptedKeyBase64 := base64.StdEncoding.EncodeToString(encryptedKey)
 
-	c.JSON(http.StatusOK, gin.H{"status": "success", "salt": saltBase64, "data": encryptedText, "pbkdf2key": encryptedKeyBase64, "saltUncoded": salt, "sharedkey": os.Getenv("WEBSERVER_SHARED_KEY"), "iteration": os.Getenv("PBKDF2_ITERATIONS")})
+	c.JSON(http.StatusOK, gin.H{"status": "success", "salt": saltBase64, "data": encryptedText})
 
 }

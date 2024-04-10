@@ -1,4 +1,4 @@
-package btickets
+package tickets
 
 import (
 	"GoBagouox/database"

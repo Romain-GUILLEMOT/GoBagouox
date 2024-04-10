@@ -1,39 +1,23 @@
-package btickets
+package tickets
 
 import (
 	"GoBagouox/database"
 	"GoBagouox/database/models"
-	"GoBagouox/discord/discordUtils"
 	"GoBagouox/utils"
 	"fmt"
 	"github.com/bwmarrin/discordgo"
-	"gorm.io/gorm"
 	"os"
 	"strconv"
 )
 
-func Delete(s *discordgo.Session, i *discordgo.InteractionCreate) {
+func Close(ticket models.Ticket, s *discordgo.Session) error {
 	db := database.GetDB()
-	channel := i.ChannelID
-	//Get ticket
-	var ticket models.Ticket
-	result := db.Preload("Owner").First(&ticket, "channel_id = ?", channel)
-	if result.Error == gorm.ErrRecordNotFound {
-		utils.Error("Ticket not found.", result.Error, 1)
-		discordUtils.DiscordError(s, i)
-		return
-	} else if result.Error != nil {
-		utils.Error("An unknown error occurred during the ticket closing phase.", result.Error, 1)
-		discordUtils.DiscordError(s, i)
-		return
-	}
 	//Set status to closed
 	ticket.Status = "closed"
-	result = db.Save(&ticket)
+	result := db.Save(&ticket)
 	if result.Error != nil {
 		utils.Error("An unknown error occurred while saving of ticket modification.", result.Error, 1)
-		discordUtils.DiscordError(s, i)
-		return
+		return result.Error
 	}
 	//Send a email to the user
 	user := ticket.Owner
@@ -73,10 +57,10 @@ func Delete(s *discordgo.Session, i *discordgo.InteractionCreate) {
 	}
 
 	//Remove channel
-	_, err = s.ChannelDelete(channel)
+	_, err = s.ChannelDelete(ticket.ChannelId)
 	if err != nil {
 		utils.Error("An unknown error occurred while deleting the channel.", err, 1)
-		discordUtils.DiscordError(s, i)
-		return
+		return err
 	}
+	return nil
 }

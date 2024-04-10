@@ -33,8 +33,20 @@ func getRoutes() []Route {
 		},
 		{
 			Method:     "GET",
+			Path:       "/tickets",
+			Handler:    ticket.Getticketlist,
+			Middleware: []gin.HandlerFunc{middleware.AuthRequired()},
+		},
+		{
+			Method:     "GET",
 			Path:       "/ticket/:id",
 			Handler:    ticket.Gettranscript,
+			Middleware: []gin.HandlerFunc{middleware.AuthRequired()},
+		},
+		{
+			Method:     "DELETE",
+			Path:       "/ticket/:id",
+			Handler:    ticket.Close,
 			Middleware: []gin.HandlerFunc{middleware.AuthRequired()},
 		},
 	}
