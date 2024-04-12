@@ -8,7 +8,7 @@ import (
 	"io"
 )
 
-func EncryptXChaCha(plainText string, key []byte) (string, error) {
+func encryptXChaCha(plainText string, key []byte) (string, error) {
 	if len(key) != 32 { // XChaCha20-Poly1305 nécessite une clé de 32 octets
 		return "", errors.New("Invalid key length")
 	}
@@ -27,7 +27,7 @@ func EncryptXChaCha(plainText string, key []byte) (string, error) {
 	return base64.StdEncoding.EncodeToString(ciphertext), nil
 }
 
-func DecryptXChaCha(encodedText string, key []byte) (string, error) {
+func decryptXChaCha(encodedText string, key []byte) (string, error) {
 	aead, err := chacha20poly1305.NewX(key)
 	if err != nil {
 		return "", err

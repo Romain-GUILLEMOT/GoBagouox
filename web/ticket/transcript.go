@@ -1,11 +1,9 @@
 package ticket
 
 import (
-	"GoBagouox/database"
-	"GoBagouox/database/models"
 	"GoBagouox/utils"
 	"GoBagouox/utils/security"
-	"encoding/base64"
+	"GoBagouox/utils/web"
 	"encoding/json"
 	"github.com/gin-gonic/gin"
 	"net/http"
@@ -21,28 +19,9 @@ func Gettranscript(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"status": "error", "message": "Some data are missing."})
 		return
 	}
-	db := database.GetDB()
-	var ticket models.Ticket
-	err := db.Preload("TicketMessages").Preload("Owner").Preload("TicketMessages.Owner").Preload("TicketMessages.TicketAttachments").First(&ticket, ticketID).Error
+	ticket, err := web.GetTicket(email, ticketID)
 	if err != nil {
-		utils.Error("Failed to get ticket transcript.", err, 0)
-		c.JSON(http.StatusInternalServerError, gin.H{"status": "error", "message": "Failed to get ticket transcript."})
-		return
-	}
-
-	if ticket.Owner.Email != email {
-		var user models.User
-		err := db.Where("email = ?", email).First(&user, user).Error
-		if err != nil {
-			utils.Error("Failed to get user.", err, 0)
-			c.JSON(http.StatusInternalServerError, gin.H{"status": "error", "message": "Failed to get user."})
-			return
-		}
-		if !user.Admin {
-			c.JSON(http.StatusUnauthorized, gin.H{"status": "error", "message": "Unauthorized access."})
-			return
-		}
-
+		c.JSON(http.StatusInternalServerError, gin.H{"status": "error", "message": err})
 	}
 	messages := make([]gin.H, len(ticket.TicketMessages))
 	for i, message := range ticket.TicketMessages {
@@ -82,26 +61,11 @@ func Gettranscript(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"status": "error", "message": "Unknown error occurred."})
 		return
 	}
-	salt, err := security.CreateSalt()
+	encryptedText, saltBase64, err := security.Encrypt(string(jsonData))
 	if err != nil {
-		utils.Error("Error during salt creation.", err, 0)
 		c.JSON(http.StatusInternalServerError, gin.H{"status": "error", "message": "Unknown error occurred."})
 		return
 	}
-	encryptedKey, err := security.PBKDF2Encode(salt)
-	if err != nil {
-		utils.Error("Error during PBKDF2 creation.", err, 0)
-		c.JSON(http.StatusInternalServerError, gin.H{"status": "error", "message": "Unknown error occurred."})
-		return
-	}
-	encryptedText, err := security.EncryptXChaCha(string(jsonData), encryptedKey)
-	if err != nil {
-		utils.Error("Error during XCha encoding.", err, 0)
-		c.JSON(http.StatusInternalServerError, gin.H{"status": "error", "message": "Unknown error occurred."})
-		return
-	}
-	saltBase64 := base64.StdEncoding.EncodeToString(salt)
-
 	c.JSON(http.StatusOK, gin.H{"status": "success", "salt": saltBase64, "data": encryptedText})
 
 }

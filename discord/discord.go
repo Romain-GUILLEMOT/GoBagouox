@@ -41,10 +41,15 @@ func getCommands() map[string]Command {
 			Description: "Return Bagou450 server status.",
 			Handler:     commands.GetStatus,
 		},
-		"removechannel": {
-			Name:        "removechannel",
-			Description: "removechannel",
-			Handler:     commands.RemoveChannel,
+		"getlogs": {
+			Name:        "getlogs",
+			Description: "getlogs",
+			Handler:     commands.GetLogs,
+		},
+		"getyarn": {
+			Name:        "getyarn",
+			Description: "getyarn",
+			Handler:     commands.GetYarn,
 		},
 	}
 }

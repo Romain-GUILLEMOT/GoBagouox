@@ -7,7 +7,7 @@ import (
 	"strconv"
 )
 
-func PBKDF2Encode(salt []byte) ([]byte, error) {
+func pbkdf2Encode(salt []byte) ([]byte, error) {
 	iteration := os.Getenv("PBKDF2_ITERATIONS")
 	key := os.Getenv("WEBSERVER_SHARED_KEY")
 

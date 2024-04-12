@@ -6,7 +6,7 @@ import (
 	"strconv"
 )
 
-func CreateSalt() ([]byte, error) {
+func createSalt() ([]byte, error) {
 	saltSize, err := strconv.Atoi(os.Getenv("SALT_SIZE"))
 	if err != nil {
 		return nil, err

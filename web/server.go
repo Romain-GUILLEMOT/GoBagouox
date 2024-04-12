@@ -44,9 +44,21 @@ func getRoutes() []Route {
 			Middleware: []gin.HandlerFunc{middleware.AuthRequired()},
 		},
 		{
+			Method:     "POST",
+			Path:       "/ticket/:id",
+			Handler:    ticket.SendMessage,
+			Middleware: []gin.HandlerFunc{middleware.AuthRequired()},
+		},
+		{
 			Method:     "DELETE",
 			Path:       "/ticket/:id",
 			Handler:    ticket.Close,
+			Middleware: []gin.HandlerFunc{middleware.AuthRequired()},
+		},
+		{
+			Method:     "GET",
+			Path:       "/ticket/:id/attachment/:uuid",
+			Handler:    ticket.Downloadattachment,
 			Middleware: []gin.HandlerFunc{middleware.AuthRequired()},
 		},
 	}

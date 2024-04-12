@@ -5,7 +5,6 @@ import (
 	"GoBagouox/database/models"
 	"GoBagouox/utils"
 	"GoBagouox/utils/security"
-	"encoding/base64"
 	"encoding/json"
 	"github.com/gin-gonic/gin"
 	"net/http"
@@ -28,12 +27,22 @@ func Getticketlist(c *gin.Context) {
 		return
 	}
 	var tickets []models.Ticket
-	result = db.Where("owner_id = ?", user.ID).Find(&tickets)
-	if result.Error != nil {
-		utils.Error("Error while querying tickets", result.Error, 2)
-		c.JSON(http.StatusInternalServerError, gin.H{"status": "error", "message": "Internal server error."})
-		return
+	if user.Admin {
+		result = db.Find(&tickets)
+		if result.Error != nil {
+			utils.Error("Error while querying tickets", result.Error, 2)
+			c.JSON(http.StatusInternalServerError, gin.H{"status": "error", "message": "Internal server error."})
+			return
+		}
+	} else {
+		result = db.Where("owner_id = ?", user.ID).Find(&tickets)
+		if result.Error != nil {
+			utils.Error("Error while querying tickets", result.Error, 2)
+			c.JSON(http.StatusInternalServerError, gin.H{"status": "error", "message": "Internal server error."})
+			return
+		}
 	}
+
 	ticketsJSON, err := json.Marshal(tickets)
 	if err != nil {
 		utils.Error("Error during JSON conversion.", err, 0)
@@ -41,25 +50,10 @@ func Getticketlist(c *gin.Context) {
 		return
 	}
 
-	salt, err := security.CreateSalt()
+	encryptedText, saltBase64, err := security.Encrypt(string(ticketsJSON))
 	if err != nil {
-		utils.Error("Error during salt creation.", err, 0)
 		c.JSON(http.StatusInternalServerError, gin.H{"status": "error", "message": "Unknown error occurred."})
 		return
 	}
-	encryptedKey, err := security.PBKDF2Encode(salt)
-	if err != nil {
-		utils.Error("Error during PBKDF2 creation.", err, 0)
-		c.JSON(http.StatusInternalServerError, gin.H{"status": "error", "message": "Unknown error occurred."})
-		return
-	}
-	encryptedText, err := security.EncryptXChaCha(string(ticketsJSON), encryptedKey)
-	if err != nil {
-		utils.Error("Error during XCha encoding.", err, 0)
-		c.JSON(http.StatusInternalServerError, gin.H{"status": "error", "message": "Unknown error occurred."})
-		return
-	}
-	saltBase64 := base64.StdEncoding.EncodeToString(salt)
-
 	c.JSON(http.StatusOK, gin.H{"status": "success", "salt": saltBase64, "data": encryptedText})
 }
